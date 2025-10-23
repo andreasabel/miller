@@ -7,6 +7,7 @@ module Syntax.NbE.Properties where
 
  open import Support.Equality
  open import Support.EqReasoning
+   using (begin[_]_) renaming (module Setoid-Reasoning to EqR; module Equality-Reasoning to Eq-≡)
 
  open import Injections
 
@@ -20,14 +21,17 @@ module Syntax.NbE.Properties where
    eval-tri (mvar u j) i g1≤g2 = cong (mvar u) (reifys-ext (evalAs-tri j i g1≤g2))
    eval-tri (var x ts) i {g1} {g2} g1≤g2 = $$-ext {x = get g2 (i $ x)} {get g1 x} (symd _ (g1≤g2 x))
                                            {evals (rens i ts) g2} {evals ts g1} (evals-tri ts i g1≤g2)
-   eval-tri (lam t)    i {g1} {g2} g1≤g2 = λ D i₁ {s1} {s2} s → eval-tri t (cons i) 
-    (λ { {._} zero → symd _ s;
-         (suc v)   → begin[ dom ]
-          get (mapEnv i₁ g1) v                          ≈⟨ get-nat reflA v i₁ ⟩
+   eval-tri (lam t)    i {g1} {g2} g1≤g2 D i₁ {s1} {s2} s = eval-tri t (cons i) aux
+     where
+       aux : (s2 ∷ mapEnv i₁ g1) ≤[ cons i ] (s1 ∷ mapEnv i₁ g2)
+       aux {._} zero = symd _ s
+       aux (suc v)   = begin[ dom ]
+          get (mapEnv i₁ g1) v                          ≈⟨ get-nat {xs = g1} {ys = g1} (reflA {x = g1}) v i₁ ⟩
           mapDom i₁ (get g1 v)                          ≈⟨ mapDom-ext i₁ (g1≤g2 v) ⟩
-          mapDom i₁ (get g2 (i $ v))                    ≈⟨ symd _ (get-nat reflA (i $ v) i₁) ⟩
+          mapDom i₁ (get g2 (i $ v))                    ≈⟨ symd _ (get-nat {xs = g2} {ys = g2} (reflA {x = g2}) (i $ v) i₁) ⟩
           get (s1 ∷ mapEnv i₁ g2) (thin zero _ (i $ v)) ≡⟨ cong (get (s1 ∷ mapEnv i₁ g2)) (sym (iso2 _ _ v)) ⟩
-          get (s1 ∷ mapEnv i₁ g2) (weak i $ v)          ∎})
+          get (s1 ∷ mapEnv i₁ g2) (weak i $ v)          ∎
+        where open EqR {S = dom}
 
    evals-tri : ∀ {b Sg G D K D1 T} → (t : Tms< b > Sg G D T) → (i : Inj D K) {g1 : All (Dom Sg G D1) D} {g2 : All (Dom Sg G D1) K} →
             g1 ≤[ i ] g2 → evals (rens i t) g2 ≡A evals t g1
@@ -36,8 +40,8 @@ module Syntax.NbE.Properties where
 
    evalAs-tri : ∀ {b Sg G D K D1 T} → (t : Args b Sg G D T) → (i : Inj D K) {g1 : All (Dom Sg G D1) D} {g2 : All (Dom Sg G D1) K} →
             g1 ≤[ i ] g2 → evalAs (renArgs i t) g2 ≡A evalAs t g1
-   evalAs-tri {true}  j  i {g1} {g2} le v 
-     rewrite get-build (λ x₁ → get g2 ((i ∘i j) $ x₁)) v 
+   evalAs-tri {true}  j  i {g1} {g2} le v
+     rewrite get-build (λ x₁ → get g2 ((i ∘i j) $ x₁)) v
            | get-build (λ x₁ → get g1 (j $ x₁)) v = transd _ (≡-d (cong (get g2) (apply-∘ i j))) (symd _ (le (j $ v)))
    evalAs-tri {false} ts i           le v = evals-tri ts i le v
 
@@ -45,27 +49,29 @@ module Syntax.NbE.Properties where
  -- which makes it a functor from the comma category  _∋_ / Dom Sg G  of environments to  Tm Sg G / Dom Sg G .
  eval-square : ∀ {b Sg G D K D1 H T} (t : Tm< b > Sg G D T) (i : Inj D K) (j : Inj D1 H) {g1 : All (Dom Sg G D1) D} {g2 : All (Dom Sg G H) K} →
                mapEnv j g1 ≤[ i ] g2 → T ∋ eval (ren i t) g2 ≡d mapDom j (eval t g1)
- eval-square t i j {g1} {g2} sq = begin[ dom ] 
-   eval (ren i t) g2    ≈⟨ eval-tri t i sq ⟩ 
-   eval t (mapEnv j g1) ≈⟨ eval-nat t reflA j ⟩ 
-   mapDom j (eval t g1) ∎
+ eval-square t i j {g1} {g2} sq = begin[ dom ]
+     eval (ren i t) g2    ≈⟨ eval-tri t i sq ⟩
+     eval t (mapEnv j g1) ≈⟨ eval-nat t {xs = g1} {ys = g1} (reflA {x = g1}) j ⟩
+     mapDom j (eval t g1) ∎
+   where open EqR {S = dom}
 
  evals-square : ∀ {b Sg G D K D1 H T} (ts : Tms< b > Sg G D T) (i : Inj D K) (j : Inj D1 H) {g1 : All (Dom Sg G D1) D} {g2 : All (Dom Sg G H) K} →
                mapEnv j g1 ≤[ i ] g2 → evals (rens i ts) g2 ≡A mapEnv j (evals ts g1)
- evals-square t i j {g1} {g2} sq v = begin[ dom ] 
-   get (evals (rens i t) g2) v   ≈⟨ evals-tri t i sq v ⟩
-   get (evals t (mapEnv j g1)) v ≈⟨ evals-nat t reflA j v ⟩
-   get (mapEnv j (evals t g1)) v ∎
+ evals-square t i j {g1} {g2} sq v = begin[ dom ]
+     get (evals (rens i t) g2) v   ≈⟨ evals-tri t i sq v ⟩
+     get (evals t (mapEnv j g1)) v ≈⟨ evals-nat t (reflA {x = g1}) j v ⟩
+     get (mapEnv j (evals t g1)) v ∎
+   where open EqR {S = dom}
 
-  
+
  mutual
    Rel : ∀ {Sg G B C} T → (f : All (Dom Sg G C) B) → (g : Dom Sg G B T) → (h : Dom Sg G C T) → Set
    Rel ([]       ->> B) f g h = (! B) ∋ eval g f ≡d h
-   Rel ((T ∷ Ts) ->> B) f g h = 
+   Rel ((T ∷ Ts) ->> B) f g h =
        (∀ D i K j {s1 s2} f' (ex : mapEnv j f ≤[ i ] f') → Rel T f' s1 s2 → Rel (Ts ->> B) f' (proj₁ g D i s1) (proj₁ h K j s2))
 
    RelA : ∀ {Sg G A B C} → (f : All (Dom Sg G C) B)
-          (g : All (Dom Sg G B) A)(h : All (Dom Sg G C) A) → Set 
+          (g : All (Dom Sg G B) A)(h : All (Dom Sg G C) A) → Set
    RelA f g h = (∀ {S} (x : _ ∋ S) → Rel S f (get g x) (get h x))
 
  transR : ∀ {Sg G B C} T {f : All (Dom Sg G C) B} {g : Dom Sg G B T} {h : Dom Sg G C T} →
@@ -73,53 +79,57 @@ module Syntax.NbE.Properties where
  transR ([]       ->> B) r eq = trans r eq
  transR ((T ∷ Ts) ->> B) r eq = (λ D i K j f' ex x → transR (Ts ->> B) (r D i K j f' ex x) (eq K j (refld _)))
 
- mapRel : ∀ {Sg G B C} T → (f : All (Dom Sg G C) B) {g : Dom Sg G B T} {h : Dom Sg G C T} → Rel T f g h → 
+ mapRel : ∀ {Sg G B C} T → (f : All (Dom Sg G C) B) {g : Dom Sg G B T} {h : Dom Sg G C T} → Rel T f g h →
           ∀ {D} (i : Inj B D) {K} (j : Inj C K) (f' : All (Dom Sg G K) D)
           → mapEnv j f ≤[ i ] f' → Rel T f' (mapDom i g) (mapDom j h)
  mapRel ([]      ->> _) f {g} r i j f' ex = trans (eval-square g i j ex) (cong (ren j) r)
- mapRel ((_ ∷ _) ->> _) f     r i j f' ex = (λ D i₁ K j₁ f'' ex₁ x₃ → 
+ mapRel ((_ ∷ _) ->> _) f     r i j f' ex = (λ D i₁ K j₁ f'' ex₁ x₃ →
                 r D (i₁ ∘i i) K (j₁ ∘i j) f'' (≤[]-∘ f i j f' ex i₁ j₁ f'' ex₁) x₃)
 
- mapRelA : ∀ {Sg G B C T} (f : All (Dom Sg G C) B) {g : All (Dom Sg G B) T} {h : All (Dom Sg G C) T} → RelA f g h → 
+ mapRelA : ∀ {Sg G B C T} (f : All (Dom Sg G C) B) {g : All (Dom Sg G B) T} {h : All (Dom Sg G C) T} → RelA f g h →
            ∀ {D} (i : Inj B D) {K} (j : Inj C K) (f' : All (Dom Sg G K) D)
            → mapEnv j f ≤[ i ] f' → RelA f' (mapEnv i g) (mapEnv j h)
- mapRelA f {g} {h} r i j f' ex {S} x = subst₂ (Rel S f') (sym (get-nat-≡ {f = mapDom i} g x)) (sym (get-nat-≡ {f = mapDom j} h x)) 
+ mapRelA f {g} {h} r i j f' ex {S} x = subst₂ (Rel S f') (sym (get-nat-≡ {f = mapDom i} g x)) (sym (get-nat-≡ {f = mapDom j} h x))
                                                          (mapRel S f (r x) i j f' ex)
-   
+
  mutual
 
-   expand-∘ : ∀ {Sg G D0 D} Ss {B} (f : All (Dom Sg G D) D0) (d : Dom Sg G D (Ss ->> B)) {e} → 
+   expand-∘ : ∀ {Sg G D0 D} Ss {B} (f : All (Dom Sg G D) D0) (d : Dom Sg G D (Ss ->> B)) {e} →
              (∀ D i K (j : Inj _ K) {xs1 xs2} f' (ex : mapEnv j f ≤[ i ] f') → RelA f' xs1 xs2 → Rel (! B) f' (proj₁ e D i xs1) (mapDom j d $$ xs2))
              → Rel (Ss ->> B) f (expand Ss e) d
-   expand-∘ []       f d eq = trans (eq _ id-i _ id-i {[]} {[]} f (λ x → 
-                              transd _ (mapEnv-id x) (≡-d (cong (get f) (sym (id-i$ x))))) (λ ())) (ren-id _)
-   expand-∘ (S ∷ Ss) f (d , d-nat) {e , _} eq = (λ D i K j {x1} {x2} f' ex x₁ → 
-    expand-∘ Ss f' (d K j x2) (λ D₁ i₁ K₁ j₁ {xs1} {xs2} f'' ex₁ x₂ → begin[ dom ]
-     eval (e D₁ (i₁ ∘i i) (mapDom i₁ x1 ∷ xs1)) f'' ≈⟨ eq _ (i₁ ∘i i) _ (j₁ ∘i j) {mapDom i₁ x1 ∷ xs1} {mapDom j₁ x2 ∷ xs2}
-                                                        f'' (≤[]-∘ f i j f' ex i₁ j₁ f'' ex₁)
-                                                        (λ { {._} zero → mapRel S f' x₁ i₁ j₁ f'' ex₁; (suc v) → x₂ v}) ⟩
-     d K₁ (id-i ∘i (j₁ ∘i j)) (mapDom j₁ x2) $$ xs2 ≈⟨ $$-ext (≡-d (cong₂ (d K₁) (left-id (j₁ ∘i j)) refl))
-                                                              {xs2} {xs2} reflA ⟩
-     d K₁ (j₁ ∘i j) (mapDom j₁ x2) $$ xs2           ≈⟨ $$-ext (d-nat _ j (refld _) _ j₁) 
-                                                              {xs2} {xs2} reflA ⟩
-     mapDom j₁ (d K j x2) $$ xs2                    ∎))
-                 
+   expand-∘ []       f d eq = trans (eq _ id-i _ id-i {[]} {[]} f (λ x →
+                              transd _ (mapEnv-id {xs = f} x) (≡-d (cong (get f) (sym (id-i$ x))))) (λ ())) (ren-id _)
+   expand-∘ (S ∷ Ss) f (d , d-nat) {e , _} eq D i K j {x1} {x2} f' ex x₁ = expand-∘ Ss f' (d K j x2) aux
+     where
+       aux : _
+       aux D₁ i₁ K₁ j₁ {xs1} {xs2} f'' ex₁ x₂ = begin[ dom ]
+         eval (e D₁ (i₁ ∘i i) (mapDom i₁ x1 ∷ xs1)) f'' ≈⟨ eq _ (i₁ ∘i i) _ (j₁ ∘i j) {mapDom i₁ x1 ∷ xs1} {mapDom j₁ x2 ∷ xs2}
+                                                            f'' (≤[]-∘ f i j f' ex i₁ j₁ f'' ex₁)
+                                                            (λ { {._} zero → mapRel S f' x₁ i₁ j₁ f'' ex₁; (suc v) → x₂ v}) ⟩
+         d K₁ (id-i ∘i (j₁ ∘i j)) (mapDom j₁ x2) $$ xs2 ≈⟨ $$-ext (≡-d (cong₂ (d K₁) (left-id (j₁ ∘i j)) refl))
+                                                                  {xs2} {xs2} (reflA {x = xs2}) ⟩
+         d K₁ (j₁ ∘i j) (mapDom j₁ x2) $$ xs2           ≈⟨ $$-ext (d-nat _ j (refld _) _ j₁)
+                                                                  {xs2} {xs2} (reflA {x = xs2}) ⟩
+         mapDom j₁ (d K j x2) $$ xs2                    ∎
+        where open EqR {S = dom}
+
+
    injv-∘ : ∀ {Sg G D0 D} T (f : All (Dom Sg G D) D0) (v : _ ∋ T) (d : Dom Sg G D T)
             → T ∋ get f v ≡d d → Rel T f (injv v) d
-   injv-∘ (Ss ->> B) f v d eq = expand-∘ Ss f d (λ D i K j {xs} {ys} f' ex x → 
-          $$-ext {x = get f' (i $ v)} {mapDom j d} (transd _ (transd _ (symd _ (ex v)) (get-nat reflA v j)) (mapDom-ext j eq)) 
-                 {evals (reifys xs) f'} {ys} (RelA-unfold f' x))
+   injv-∘ (Ss ->> B) f v d eq = expand-∘ Ss f d (λ D i K j {xs} {ys} f' ex x →
+          $$-ext {x = get f' (i $ v)} {mapDom j d} (transd _ (transd _ (symd _ (ex v)) (get-nat {xs = f} {ys = f} (reflA {x = f}) v j)) (mapDom-ext j eq))
+                 {evals (reifys xs) f'} {ys} (RelA-unfold f' {g = xs} {h = ys} x))
 
-   precompose-∘ : ∀ {Sg G Z A B C} → (f : All (Dom Sg G C) B) {g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} 
+   precompose-∘ : ∀ {Sg G Z A B C} → (f : All (Dom Sg G C) B) {g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A}
                   → RelA f g h → (j : Inj Z A) → RelA f (build (\ z -> get g (j $ z))) (build (\ z -> get h (j $ z)))
-   precompose-∘ f {g} {h} ar j {S} x = subst₂ (Rel S f) (sym (get-build (λ z → get g (j $ z)) x)) 
-                                                        (sym (get-build (λ z → get h (j $ z)) x)) 
+   precompose-∘ f {g} {h} ar j {S} x = subst₂ (Rel S f) (sym (get-build (λ z → get g (j $ z)) x))
+                                                        (sym (get-build (λ z → get h (j $ z)) x))
                                               (ar (j $ x))
 
    idEnv-∘ : ∀ {Sg G D T} (g : All (Dom Sg G D) T) -> RelA g idEnv g
    idEnv-∘ {Sg} {G} {D} g x rewrite get-build (injv {Sg} {G}) x = injv-∘ _ g x (get g x) (refld _)
 
-   nf-∘ : ∀ {b Sg G A B C T} → (t : Tm< b > Sg G A T) → (f : All (Dom Sg G C) B){g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} 
+   nf-∘ : ∀ {b Sg G A B C T} → (t : Tm< b > Sg G A T) → (f : All (Dom Sg G C) B){g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A}
           → RelA f g h → nf (nf t g) f ≡ nf t h
    nf-∘ t f ar = reify-ext _ (Rel-unfold _ f (eval-∘ f ar t))
 
@@ -131,24 +141,24 @@ module Syntax.NbE.Properties where
    nfAs-∘ : ∀ {b Sg G A B C T} → (t : Args b Sg G A T) → (f : All (Dom Sg G C) B){g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} →
             RelA f g h → nfs (nfAs t g) f ≡ nfAs t h
    nfAs-∘ {true}  []             f ar = refl
-   nfAs-∘ {true}  (i ∷ t [ pf ]) f ar = cong₂ _∷_ (reify-ext _ (Rel-unfold _ f (ar i))) 
-                                                  (nfAs-∘ t f ar)
+   nfAs-∘ {true}  (i ∷ t [ pf ]) f {g = g} {h = h} ar = cong₂ _∷_ (reify-ext _ (Rel-unfold _ f (ar i)))
+                                                  (nfAs-∘ t f {g = g} {h = h} ar)
    nfAs-∘ {false} t              f ar = nfs-∘ t f ar
-   
+
    eval-∘ : ∀ {b Sg G A B C T} → (f : All (Dom Sg G C) B)
           {g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} → RelA f g h → (t : Tm< b > Sg G A T) → Rel T f (eval t g) (eval t h)
    eval-∘ f ar (con c ts) = cong (con c) (nfs-∘ ts f ar)
    eval-∘ f ar (mvar u j) = cong (mvar u) (nfAs-∘ j f ar)
-   eval-∘ f ar (var x ts) = $$-∘ f (evals-∘ f ar ts) (ar x)
-   eval-∘ f {g} {h} ar (lam t) =  
-     (λ D i K j f' ex x → 
-      eval-∘ f' 
-       (λ { {._} zero   → x; 
+   eval-∘ f {g} {h} ar (var x ts) = $$-∘ f {g = evals ts g} {h = evals ts h} (evals-∘ f ar ts) (ar x)
+   eval-∘ f {g} {h} ar (lam t) =
+     (λ D i K j f' ex x →
+      eval-∘ f'
+       (λ { {._} zero   → x;
             {S} (suc v) → subst₂ (Rel S f') (sym (get-nat-≡ {f = mapDom i} g v)) (sym (get-nat-≡ {f = mapDom j} h v))
-                           (mapRel S f (ar v) i j f' ex)}) 
+                           (mapRel S f (ar v) i j f' ex)})
        t)
 
-   evals-∘ : ∀ {b Sg G A B C T} → (f : All (Dom Sg G C) B){g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} → RelA f g h → 
+   evals-∘ : ∀ {b Sg G A B C T} → (f : All (Dom Sg G C) B){g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} → RelA f g h →
              (t : Tms< b > Sg G A T) → RelA f (evals t g) (evals t h)
    evals-∘ f ar (t ∷ t₁) zero    = eval-∘ f ar t
    evals-∘ f ar (t ∷ t₁) (suc x) = evals-∘ f ar t₁ x
@@ -156,39 +166,40 @@ module Syntax.NbE.Properties where
    $$-∘ : ∀ {Sg G A B C} → (f : All (Dom Sg G C) B) {g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} → RelA f g h →
           ∀ {X} {gx : Dom _ _ _ (_ ->> X)} {hx} → Rel _ f gx hx → _ ∋ eval (gx $$ g) f ≡d (hx $$ h)
    $$-∘ f {[]}     {[]}      ar r = r
-   $$-∘ f {px ∷ g} {px₁ ∷ h} ar r = $$-∘ f (ar ∘ suc)
-     (r _ id-i _ id-i f (\ x → transd _ (mapEnv-id x) (≡-d (cong (get f) (sym (id-i$ x))))) (ar zero))
+   $$-∘ f {px ∷ g} {px₁ ∷ h} ar r = $$-∘ f {g = g} {h = h} (ar ∘ suc)
+     (r _ id-i _ id-i f (\ x → transd _ (mapEnv-id {xs = f} x) (≡-d (cong (get f) (sym (id-i$ x))))) (ar zero))
 
    Rel-unfold : ∀ {Sg G} A {B C} → (f : All (Dom Sg G C) B)
           {g : (Dom Sg G B) A}{h : (Dom Sg G C) A} → Rel A f g h → _ ∋ eval (reify A g) f ≡d h
    Rel-unfold ([]       ->> _) f r = r
-   Rel-unfold ((T ∷ Ts) ->> _) f r = λ D i s → 
-     Rel-unfold (Ts ->> _) (_ ∷ mapEnv i f) 
-            (r (T ∷ _) (weak id-i) D i (_ ∷ mapEnv i f) 
+   Rel-unfold ((T ∷ Ts) ->> _) f r = λ D i s →
+     Rel-unfold (Ts ->> _) (_ ∷ mapEnv i f)
+            (r (T ∷ _) (weak id-i) D i (_ ∷ mapEnv i f)
                (λ x → ≡-d (sym (cong (get (_ ∷ mapEnv i f)) (apply-weakid x))))
                (injv-∘ T (_ ∷ mapEnv i f) zero _ s))
 
    RelA-unfold : ∀ {Sg G A B C} → (f : All (Dom Sg G C) B)
              {g : All (Dom Sg G B) A}{h : All (Dom Sg G C) A} → RelA f g h → evals (reifys g) f ≡A h
    RelA-unfold f {gx ∷ g} {hx ∷ h} r zero    = Rel-unfold _ f (r zero)
-   RelA-unfold f {gx ∷ g} {hx ∷ h} r (suc v) = RelA-unfold f (r ∘ suc) v
-
+   RelA-unfold f {gx ∷ g} {hx ∷ h} r (suc v) = RelA-unfold f {g} {h} (r ∘ suc) v
 
  mutual
 
    expand-id : ∀ {Sg G D T B} f {f-nat} (ts : All (Dom Sg G D) T) -> expand {T = B} T (f , f-nat) $$ ts ≡ f _ id-i ts
    expand-id f         []       = refl
-   expand-id f {f-nat} (t ∷ ts) = 
+   expand-id f {f-nat} (t ∷ ts) =
      begin expand _ (applyN (f , f-nat) id-i t) $$ ts ≡⟨ expand-id _ ts ⟩
            f _ (id-i ∘i id-i) (mapDom id-i t ∷ ts)    ≡⟨ cong₂ (f _) (left-id id-i) refl ⟩
-           f _ id-i (mapDom id-i t ∷ ts)              ≡⟨ reflN (f , f-nat) _ id-i (cons-ext (mapDom-id t) reflA) ⟩
+           f _ id-i (mapDom id-i t ∷ ts)              ≡⟨ reflN (f , f-nat) _ id-i (cons-ext (mapDom-id t) (reflA {x = ts})) ⟩
            f _ id-i (t ∷ ts)                          ∎
-   
+    where open ≡-Reasoning
+
    injv-id : ∀ {Sg G D T B} (v : _ ∋ (_ ->> B)) (ts : All (Dom Sg G D) T) -> injv v $$ ts ≡ var v (reifys ts)
    injv-id v ts = begin
-     expand _ ((λ D1 i xs → var (i $ v) (reifys xs)) , _) $$ ts ≡⟨ expand-id (λ D1 i xs → var (i $ v) (reifys xs)) ts ⟩ 
+     expand _ ((λ D1 i xs → var (i $ v) (reifys xs)) , _) $$ ts ≡⟨ expand-id (λ D1 i xs → var (i $ v) (reifys xs)) ts ⟩
      var (id-i $ v) (reifys ts)                                 ≡⟨ cong₂ var (id-i$ v) refl ⟩
      var v          (reifys ts)                                 ∎
+    where open ≡-Reasoning
 
    nf-id : ∀ {Sg G D T} (t : Tm< false > Sg G D T) -> nf t idEnv ≡ t
    nf-id (con c ts) = cong (con c) (nfs-id ts)
@@ -198,18 +209,22 @@ module Syntax.NbE.Properties where
      injv x      $$ evals ts idEnv ≡⟨ expand-id (λ D1 i xs → var (i $ x) (reifys xs)) (evals ts idEnv) ⟩
      var (id-i $ x) (nfs ts idEnv) ≡⟨ cong₂ var (id-i$ x) (nfs-id ts) ⟩
      var x ts                      ∎
-   nf-id (lam t) = 
-     cong lam (begin 
-       nf t (injv zero ∷ mapEnv (weak id-i) (build injv)) 
-         ≡⟨ nf-ext t (cons-ext (injv-ext zero) λ {S} x → begin[ dom ]
+    where open ≡-Reasoning
+   nf-id (lam t) = let open ≡-Reasoning in
+     cong lam (begin
+       nf t (injv zero ∷ mapEnv (weak id-i) (build injv))  ≡⟨ nf-ext t (cons-ext (injv-ext zero) lemma) ⟩
+       nf t idEnv                                          ≡⟨ nf-id t ⟩
+       t                                                   ∎)
+    where
+      lemma : mapEnv (weak id-i) (build injv) ≡A build (injv ∘ suc)
+      lemma x = begin[ dom ]
              get (mapEnv (weak id-i) idEnv) x                    ≡⟨ cong (λ g → get g x) (mapAll-build _ injv (mapDom (weak id-i))) ⟩
              get (build (λ x₁ → mapDom (weak id-i) (injv x₁))) x ≡⟨ get-build (λ x₁ → mapDom (weak id-i) (injv x₁)) x ⟩
              mapDom (weak id-i) (injv x)                         ≈⟨ injv-nat (weak id-i) x ⟩
              injv (weak id-i $ x)                                ≡⟨ cong injv (apply-weakid x) ⟩
-             injv (suc x)                                        ≡⟨ sym (get-build (λ x₁ → injv (suc x₁)) x) ⟩
-             get (build (λ x₁ → injv (suc x₁))) x                ∎) ⟩
-       nf t idEnv ≡⟨ nf-id t ⟩
-       t          ∎)
+             injv (suc x)                                        ≡⟨ sym (get-build (injv ∘ suc) x) ⟩
+             get (build (λ x₁ → injv (suc x₁))) x                ∎
+        where open EqR {S = dom}
 
    nfs-id : ∀ {Sg G D T} (ts : Tms< false > Sg G D T) -> nfs ts idEnv ≡ ts
    nfs-id [] = refl
