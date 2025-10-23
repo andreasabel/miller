@@ -2,7 +2,7 @@ module Syntax.Type where
 
 open import Data.Sum public using (_⊎_; module _⊎_)
 open _⊎_ public
-open import Data.Bool public
+open import Data.Bool public using (Bool; true; false; _∧_)
 
 open import Support.Equality
 open ≡-Reasoning
@@ -30,7 +30,7 @@ infixl 40 _->>_
 Ctx : Set
 Ctx = Bwd Ty
 
--- Meta-variables have their own context, rather than a function type. 
+-- Meta-variables have their own context, rather than a function type.
 record MTy : Set where
   constructor _<<-_
   field
@@ -51,15 +51,15 @@ MCtx = Bwd MTy
 -- G  - context for meta-vars
 -- D  - context for object-vars (or just vars)
 -- T  - term's type
--- 
+--
 -- We use the "spiny" representation where each var/constant is paired with as many arguments as its type requires.
 mutual
   data Tm<_> (b : Bool) (Sg : Ctx)(G : MCtx)(D : Ctx) : Ty → Set where
     con  : ∀ {Ss B} →
            (c : Sg ∋ (Ss ->> B)) → (ts : Tms< b > Sg G D Ss) → Tm< b > Sg G D (! B)
-    mvar : ∀ {Ss B} → 
+    mvar : ∀ {Ss B} →
            (u : G  ∋ (B <<- Ss)) → (j : Args b Sg G D Ss)    → Tm< b > Sg G D (! B)
-    var  : ∀ {Ss B} → 
+    var  : ∀ {Ss B} →
            (x : D  ∋ (Ss ->> B)) → (ts : Tms< b > Sg G D Ss) → Tm< b > Sg G D (! B)
     lam  : ∀ {S Ss B} →
           (t : Tm< b > Sg G (D <: S) (Ss ->> B)) → Tm< b > Sg G D (S :> Ss ->> B)
@@ -83,7 +83,7 @@ Tms : (Sg : Ctx)(G : MCtx)(D : Ctx) -> Fwd Ty → Set
 Tms = Tms< true >
 
 Term<_> : (b : Bool)(Sg : Ctx)(G : MCtx)(DI : Ctx) (TI : Ty ⊎ Fwd Ty) → Set
-Term< b > Sg G D (inj₁ T) = Tm< b > Sg G D T 
+Term< b > Sg G D (inj₁ T) = Tm< b > Sg G D T
 Term< b > Sg G D (inj₂ Ts) = Tms< b > Sg G D Ts
 
 Term : (Sg : Ctx)(G : MCtx)(DI : Ctx) (TI : Ty ⊎ Fwd Ty) → Set
@@ -92,7 +92,7 @@ Term = Term< true >
 -- ren makes Tm a functor over Inj
 mutual
   ren : ∀ {b Sg G D D0}{T : Ty} → Inj D D0 → Tm< b > Sg G D T → Tm< b > Sg G D0 T
-  ren rho (con c ts) = con c (rens rho ts) 
+  ren rho (con c ts) = con c (rens rho ts)
   ren rho (mvar f xs) = mvar f (renArgs rho xs)
   ren rho (var x xs) = var (rho $ x) (rens rho xs)
   ren rho (lam t) = lam (ren (cons rho) t)
@@ -115,7 +115,7 @@ mutual
   ren-∘ (mvar u j₁) = cong (mvar u) (renAs-∘ j₁)
   ren-∘ (var x ts) = cong₂ var (apply-∘ _ _) (rens-∘ ts)
   ren-∘ (lam t) = cong lam (trans (cong (λ k → ren k t) (cons-∘i _ _)) (ren-∘ t))
-  
+
   rens-∘ : ∀ {b Sg G1 D1 D2 D3 T} {j : Inj D2 D3} {i : Inj D1 D2} (t : Tms< b > Sg G1 D1 T) → rens (j ∘i i) t ≡ rens j (rens i t)
   rens-∘ [] = refl
   rens-∘ (t ∷ ts) = cong₂ _∷_ (ren-∘ t) (rens-∘ ts)
@@ -130,7 +130,7 @@ mutual
   ren-id (mvar u j) = cong (mvar u) (renAs-id j)
   ren-id (var x ts) = cong₂ var (id-i$ x) (rens-id ts)
   ren-id (lam t) = cong lam (trans (cong (λ k → ren k t) cons-id) (ren-id t))
-  
+
   rens-id : ∀ {b Sg G D T} (t : Tms< b > Sg G D T) → rens id-i t ≡ t
   rens-id [] = refl
   rens-id (t ∷ ts) = cong₂ _∷_ (ren-id t) (rens-id ts)
