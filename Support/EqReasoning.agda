@@ -1,7 +1,7 @@
 module Support.EqReasoning where
 
-open import Relation.Binary
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary using (Setoid)
+open import Relation.Binary.PropositionalEquality using (_≡_; setoid)
 import Relation.Binary.HeterogeneousEquality as H
 open H using (_≅_)
 import Relation.Binary.Reasoning.Setoid as EqR

@@ -1,9 +1,9 @@
 module Syntax.NbE where
 
  open import Relation.Binary.PropositionalEquality
- open import Relation.Binary
- open import Data.Sum
- open import Data.Product
+   using (_≡_; refl; sym; trans; cong; cong₂; subst; module ≡-Reasoning)
+ open import Relation.Binary using (Setoid)
+ open import Data.Product using (Σ; _,_; proj₁)
  open import Function using (_∘_)
 
  open import Data.List.Relation.Unary.All public renaming (map to mapAll)
