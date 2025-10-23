@@ -1,5 +1,6 @@
 module Syntax.RenOrn where
 
+open import Axiom.UniquenessOfIdentityProofs.WithK using () renaming (uip to proof-irrelevance)
 open import Relation.Binary.PropositionalEquality
 open import Data.Sum
 open import Data.Bool
@@ -12,7 +13,7 @@ open import Syntax.Type
 
 -- RTm i t is the inductive version of Σ (Tm Sg G D T) λ s → ren i s ≡ t
 -- In the language of "Ornamental Algebras, Algebraic Ornaments" RTm i t
--- would be the latter and we'd get both RTm and the remember/forget 
+-- would be the latter and we'd get both RTm and the remember/forget
 -- conversions for free by expressing ren i as a fold.
 mutual
   data RTm {b : Bool} {Sg : Ctx}{G : MCtx}{D : Ctx}{K : Ctx} (i : Inj D K) : {T : Ty} → Tm< b > Sg G K T → Set where
@@ -43,7 +44,7 @@ mutual
   forget {true}  (mvar u (j , eq)) = mvar u j , cong (mvar u) eq
   forget {false} (mvar u ts)       = mapΣ (mvar u) (cong (mvar u)) (forgets ts)
   forget {i = i} (var v refl x₂)   = mapΣ (var v) (cong (var (i $ v))) (forgets x₂)
-  forget         (lam x)           = mapΣ lam (cong lam) (forget x) 
+  forget         (lam x)           = mapΣ lam (cong lam) (forget x)
 
   forgets : ∀ {b Sg G D D0}{Ts} → {i : Inj D D0} → {t : Tms< b > Sg G D0 Ts} → (x : RTms i t) → Σ (Tms< b > Sg G D Ts) \ s → rens i s ≡ t
   forgets []       = [] , refl
@@ -72,10 +73,10 @@ mutual
   unique         (lam x)          (lam y)      = cong lam (unique x y)
   unique {false} (mvar u xs)      (mvar .u ys) = cong (mvar u) (uniques xs ys)
   unique {i = i} (var v i$v≡x xs) (var  w i$w≡x ys) with injective i v w (trans i$v≡x (sym i$w≡x))
-  unique         (var v i$v≡x xs) (var .v i$w≡x ys)    | refl 
+  unique         (var v i$v≡x xs) (var .v i$w≡x ys)    | refl
     = cong₂ (λ a b → var v a b) (proof-irrelevance i$v≡x i$w≡x) (uniques xs ys)
   unique {true} {i = i} (mvar u (j , i∘j≡k)) (mvar .u (j₁ , i∘j₁≡k)) with ∘i-inj i j j₁ (trans i∘j≡k (sym i∘j₁≡k))
-  unique {true} {i = i} (mvar u (j , i∘j≡k)) (mvar .u (.j , i∘j₁≡k))    | refl 
+  unique {true} {i = i} (mvar u (j , i∘j≡k)) (mvar .u (.j , i∘j₁≡k))    | refl
     = cong (λ e → mvar u (j , e)) (proof-irrelevance i∘j≡k i∘j₁≡k)
 
   uniques : ∀ {b Sg G D D0}{Ss : Fwd Ty} → {i : Inj D D0} → {t : Tms< b > Sg G D0 Ss} → (x y : RTms i t) → x ≡ y
@@ -83,6 +84,6 @@ mutual
   uniques (x ∷ xs) (y ∷ ys) = cong₂ _∷_ (unique x y) (uniques xs ys)
 
 ren-inj : ∀ {b Sg G D D0}{T : Ty} → (i : Inj D D0) → (s t : Tm< b > Sg G D T) -> ren i s ≡ ren i t -> s ≡ t
-ren-inj i s t eq 
+ren-inj i s t eq
  with remember i s   | remember i t
 ... | (rs , fogrs≡s) | (rt , fogrt≡t) rewrite eq = trans (sym fogrs≡s) (trans (cong (λ r → proj₁ (forget r)) (unique rs rt)) fogrt≡t)

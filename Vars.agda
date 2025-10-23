@@ -11,7 +11,7 @@ open import Support.Equality
 open ≡-Reasoning
 
 open import Relation.Nullary public using (Dec; yes; no; False; ¬_)
-open import Data.List public hiding ([_])
+open import Data.List public using (List; []; _∷_; length; _++_)
 
 infix 4 _∋_
 

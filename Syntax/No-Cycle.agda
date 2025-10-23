@@ -38,37 +38,31 @@ renT-height {inj₁ ._} i (lam t) = cong suc (renT-height _ t)
 renT-height {inj₂ .[]} i [] = refl
 renT-height {inj₂ ._} i (t ∷ t₁) = cong₂ (\ x y -> suc (x ⊔ y)) (renT-height i t) (renT-height i t₁)
 
-open import Data.Nat  
-
-private
-  n≤m⊔n : ∀ m n → (m ⊔ n) ≥ n
-  n≤m⊔n zero    _       = begin _ ∎
-  n≤m⊔n (suc m) zero    = z≤n
-  n≤m⊔n (suc m) (suc n) = s≤s (n≤m⊔n m n)
+open import Data.Nat
 
 wrapD-height : ∀ {Sg G DI TI DO TO b} → (d : DTm< b > Sg G (DI , TI) (DO , TO)) → (t : Term< b > Sg G DO TO) → heightT (wrapD d t) > heightT t
 wrapD-height lam       t = s≤s (begin heightT t ∎)
 wrapD-height (head ts) t = s≤s (m≤m⊔n (height t) (heights ts))
-wrapD-height (tail t) ts = s≤s (n≤m⊔n (height t) (heights ts))
+wrapD-height (tail t) ts = s≤s (m≤n⊔m (height t) (heights ts))
 wrapD-height (con c)  ts = s≤s (begin heightT ts ∎)
 wrapD-height (var x)  ts = s≤s (begin heightT ts ∎)
 
 wrap-height : ∀ {Sg G I O b} → (C : Context< b > Sg G I O) → (t : Term< b > Sg G (proj₁ O) (proj₂ O)) → heightT (wrap C t) ≥ heightT t
 wrap-height []      t = begin heightT t ∎
-wrap-height (d ∷ c) t = begin heightT t                    ≤⟨ ≤-step (wrap-height c t) ⟩ 
-                              suc (heightT (wrap c t))     ≤⟨ wrapD-height d (wrap c t) ⟩ 
+wrap-height (d ∷ c) t = begin heightT t                    ≤⟨ m≤n⇒m≤1+n (wrap-height c t) ⟩
+                              suc (heightT (wrap c t))     ≤⟨ wrapD-height d (wrap c t) ⟩
                               heightT (wrapD d (wrap c t)) ∎
 
-No-Cycle : ∀ {b TI Sg G D1 DI DO X} -> let TO = TI in 
-         (d : DTm< b > Sg G (DI , TI) X) (c : Context< b > Sg G X (DO , TO)) 
-         (t : Term< b > Sg G D1 TO) (i : Inj D1 DI)(j : Inj D1 DO) -> 
+No-Cycle : ∀ {b TI Sg G D1 DI DO X} -> let TO = TI in
+         (d : DTm< b > Sg G (DI , TI) X) (c : Context< b > Sg G X (DO , TO))
+         (t : Term< b > Sg G D1 TO) (i : Inj D1 DI)(j : Inj D1 DO) ->
          ¬ renT i t ≡ wrap (d ∷ c) (renT j t)
-No-Cycle d c t i j eq = ≡-or-> (cong heightT eq) 
+No-Cycle d c t i j eq = ≡-or-> (cong heightT eq)
            (begin
               suc (heightT (renT i t))              ≡⟨ cong suc (sym (renT-height i t)) ⟩
               suc (heightT t)                       ≡⟨ cong suc (renT-height j t) ⟩
               suc (heightT (renT j t))              ≤⟨ s≤s (wrap-height c (renT j t)) ⟩
-              suc (heightT (wrap c (renT j t)))     ≤⟨ wrapD-height d (wrap c (renT j t)) ⟩ 
+              suc (heightT (wrap c (renT j t)))     ≤⟨ wrapD-height d (wrap c (renT j t)) ⟩
               heightT (wrapD d (wrap c (renT j t))) ∎)
   where
     ≡-or-> : ∀ {m n} -> m ≡ n -> n > m -> ⊥
