@@ -1,10 +1,9 @@
 module MetaRens where
 
-open import Data.Nat hiding (_≤_)
 open import Relation.Nullary
 import Relation.Nullary.Decidable as Dec
 open import Data.Empty
-open import Data.Unit hiding (_≤_)
+open import Data.Unit using (⊤)
 open import Data.Sum
 open import Data.List.Relation.Unary.All
 

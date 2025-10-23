@@ -1,7 +1,6 @@
 module Injections where
 
 open import Data.Product
-open import Relation.Nullary using ()
 open import Data.Empty
 open import Data.Sum
 
