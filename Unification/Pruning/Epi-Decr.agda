@@ -1,6 +1,6 @@
 module Unification.Pruning.Epi-Decr where
 
-open import Data.Nat using (_≥_; zero; suc; z≤n; s≤s; module ≤-Reasoning)
+open import Data.Nat using (_≥_; zero; suc; z≤n; s≤s)
 open import Data.Nat.Properties
 open import Data.Empty
 open import Data.Sum
@@ -37,18 +37,28 @@ Inj-incr {A} {x ∷ xs} {Y} (u ∷ i [ pf ]) rewrite length-del u = s≤s (Inj-i
     j : Inj xs (Y - u)
     j = quo jf {jf-inj}
 
+punchout-aux : ∀ {x xctx G G1 C y yctx}
+  (f : MetaRen ((x <<- xctx) ∷ G) G1) (g1 g2 : MetaRen G1 C) (v : G ∋ y <<- yctx)
+  (eqty : y <<- f (y <<- yctx) (suc v) .Ψ ≡ x <<- f (x <<- xctx) zero .Ψ)
+  (eqbody : body (f (y <<- yctx) (suc v)) Het.≅ body (f (x <<- xctx) zero))
+  (eq : (g1 ∘mr (λ S x₁ → f S (suc x₁))) (y <<- yctx) v ≡ (g2 ∘mr (λ S x₁ → f S (suc x₁))) (y <<- yctx) v)
+
+  -> g1 (x <<- f (x <<- xctx) zero .Ψ) (body (f (x <<- xctx) zero))
+   ≡ g2 (x <<- f (x <<- xctx) zero .Ψ) (body (f (x <<- xctx) zero))
+punchout-aux {x} {xctx} f g1 g2 v eqty eqbody eq
+ with x <<- Ψ (f (x <<- xctx) zero) | body (f (x <<- xctx) zero)
+              | eqty | eqbody
+... | ._ | ._ | refl | refl   = map-Vc-inj (ρ-env (f _ (suc v))) (to-vc eq)
 
 punchout : ∀ {x G G1} -> (f : Epi (x ∷ G) G1) -> Epi G G1 ⊎ Epi G (G1 - body (proj₁ f _ zero))
-punchout {x} {G} {G1} (f , f-epic) 
+punchout {x <<- xctx} {G} {G1} (f , f-epic)
  with any? (λ v → body (f _ (suc v)) ≅∋? body (f _ zero))
-... | yes (_ , v , eqty , eqbody) = inj₁ ((λ S x → f S (suc x)) , fsuc-epic)
- where            
+... | yes ((y <<- yctx) , v , eqty , eqbody) = inj₁ ((λ S x → f S (suc x)) , fsuc-epic)
+ where
   fsuc-epic : MRop.Monic (λ S x → f S (suc x))
-  fsuc-epic {C} {g1} {g2} eq = f-epic {C} {g1} {g2} (∋-case (cong (map-Vc (ρ-env (f _ zero))) aux) eq)
-    where
-      aux : g1 _ (body (f _ zero)) ≡ g2 _ (body (f _ zero))
-      aux with type x <<- Ψ (f _ zero) | body (f _ zero) | eqty | eqbody
-      aux    | ._                      | ._              | refl | refl = map-Vc-inj (ρ-env (f _ (suc v))) (to-vc (eq _ v))
+  fsuc-epic {C} {g1} {g2} eq =
+    f-epic {C} {g1} {g2}
+      (∋-case (cong (map-Vc (ρ-env (f _ zero))) (punchout-aux f g1 g2 v eqty eqbody (eq _ v))) eq)
 ... | no ¬p = inj₂ (f' , f'-epic) where
   u = body (f _ zero)
 
@@ -78,7 +88,7 @@ punchout {x} {G} {G1} (f , f-epic)
     shift-refl g rewrite thick-refl u = refl
 
     shift-refl2 : ∀ {S}{v : _ ∋ S} g g1 -> u ≅∋ v -> shift g _ v ≡ shift g1 _ v
-    shift-refl2 {.(type x) <<- .(Ψ (f x zero))} g g1 refl` = trans (shift-refl g) (sym (shift-refl g1))
+    shift-refl2 {.x <<- .(Ψ (f (x <<- xctx) zero))} g g1 refl` = trans (shift-refl g) (sym (shift-refl g1))
 
     zero-eq = cong (map-Vc _) (begin shift g1 _ u ≡⟨ shift-refl g1 ⟩ 
                                      id-i / zero  ≡⟨ sym (shift-refl g2) ⟩ 
@@ -98,9 +108,12 @@ epi-decr {[]} {x ∷ G1} (f , f-epic)
              (\ _ ()) _ zero 
 ... | () 
 epi-decr {x ∷ G} (f , f-epic)   with f _ zero | Data.Sum.map epi-decr epi-decr (punchout (f , f-epic))
-epi-decr {x ∷ G} {G1} (f , f-epic) | i / u    | inj₁ G≥G1  = begin
-                                                               Ctx-length G1      ≤⟨ G≥G1 ⟩
-                                                               Ctx-length G       ≤⟨ n≤m+n (suc (length (ctx x))) (Ctx-length G) ⟩
-                                                               Ctx-length (x ∷ G) ∎ where open ≤-Reasoning
-epi-decr {x ∷ G} {G1} (f , f-epic) | i / u    | inj₂ G≥G1-u rewrite Ctx-length-lemma u = s≤s (Inj-incr i) +-mono G≥G1-u
-
+epi-decr {x ∷ G} {G1} (f , f-epic) | i / u    | inj₁ G≥G1
+  = begin
+    Ctx-length G1      ≤⟨ G≥G1 ⟩
+    Ctx-length G       ≤⟨ m≤m+n (Ctx-length G) (suc (length (ctx x))) ⟩
+    _                  ≡⟨ +-comm (Ctx-length G) (suc (length (ctx x))) ⟩
+    Ctx-length (x ∷ G) ∎
+    where open ≤-Reasoning
+epi-decr {x ∷ G} {G1} (f , f-epic) | i / u    | inj₂ G≥G1-u rewrite Ctx-length-lemma u
+  = +-mono-≤ (s≤s (Inj-incr i)) G≥G1-u

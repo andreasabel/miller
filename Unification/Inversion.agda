@@ -3,7 +3,10 @@ module Unification.Inversion where
 open import Relation.Binary.PropositionalEquality
 open import Data.Empty
 open import Data.Sum renaming (map to map⊎)
-open import Data.Sum renaming (inj₁ to yes; inj₂ to no)
+open import Data.Sum
+
+module Inv where
+  open import Data.Sum public renaming (inj₁ to yes; inj₂ to no)
 
 open import Injections
 
@@ -36,24 +39,24 @@ mutual
   invertTm' : ∀ {Sg G Ss D T} (i : Inj Ss D) (t : Tm Sg G D T) →
               AllMV∈ i t → i ⁻¹ t ⊎ NotInv i t
   invertTm' i (con c ts) (con m) = map⊎ (con c) (map-NI (con c)) (invertTm's i ts m)
-  invertTm' i (mvar v h) (mvar (k , comm)) = yes (mvar v (k , comm))
+  invertTm' i (mvar v h) (mvar (k , comm)) = Inv.yes (mvar v (k , comm))
   invertTm' i (var x ts) (var m) 
    with invert i x     | invertTm's i ts m 
-  ... | yes (y , iy≡x) | yes i⁻¹ts  = yes (var y iy≡x i⁻¹ts)
-  ... | _              | no  NI[ts] = no (map-NI (var x) NI[ts])
-  ... | no  ¬∃y[iy≡x]  | _          = no (NI-var ¬∃y[iy≡x])
+  ... | yes (y , iy≡x) | Inv.yes i⁻¹ts  = Inv.yes (var y iy≡x i⁻¹ts)
+  ... | _              | Inv.no  NI[ts] = Inv.no (map-NI (var x) NI[ts])
+  ... | no  ¬∃y[iy≡x]  | _          = Inv.no (NI-var ¬∃y[iy≡x])
   invertTm' i (lam t) (lam m) = map⊎ lam (map-NI {t = t} lam) (invertTm' (cons i) t m)
 
   invertTm's : ∀ {Sg G Ss D T} (i : Inj Ss D) (t : Tms Sg G D T) → 
                AllMV∈ i t → i ⁻¹ t ⊎ NotInv i t
-  invertTm's i [] m = yes []
+  invertTm's i [] m = Inv.yes []
   invertTm's i (t ∷ ts) (mt ∷ mts) 
    with invertTm' i t mt | invertTm's i ts mts
-  ... | yes p              | yes ps = yes (p ∷ ps) 
-  ... | yes p              | no ¬ps = no (map-NI (tail t) ¬ps) 
-  ... | no ¬p              | _      = no (map-NI {t = t} (head ts) ¬p)
+  ... | Inv.yes p        | Inv.yes ps = Inv.yes (p ∷ ps)
+  ... | Inv.yes p        | Inv.no ¬ps = Inv.no (map-NI (tail t) ¬ps)
+  ... | Inv.no ¬p        | _          = Inv.no (map-NI {t = t} (head ts) ¬p)
 
 invertTm : ∀ {Sg G G1 Ss D T} (i : Inj Ss D) → (t : Tm Sg G D T) → (ρ : Sub Sg G G1) → ρ / t ∈ i 
            → (∃ \ s → ren i s ≡ sub ρ t) ⊎ NotInv i (sub ρ t)
-invertTm i t ρ m = map⊎ forget (λ x → x) (invertTm' i (sub ρ t) m)
+invertTm i t ρ m = map⊎ forget (\ f {G2} -> f {G2}) (invertTm' i (sub ρ t) m)
 

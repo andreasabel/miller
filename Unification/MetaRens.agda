@@ -237,12 +237,8 @@ coequalizer-step {τ <<- Ss} {Z} {X} f g {Sg} equ (_/_ {Ψ₄} i u) (_/_ {Ψ₃}
      where
        aux : ((i ∘i ieu) ∘i e'' (τ <<- Ψ (e (τ <<- Ψ₄) u)) eu .ρ-env) ≡
              ((j ∘i jev) ∘i e'' (τ <<- Ψ (e (τ <<- Ψ₄) u)) eu .ρ-env)
-       -- aux eu with thick[ eu , eu ] eu |  thick[ eu , eu ]-refl
-       -- ... | z | eq  = {!!}
-       -- aux = {! thick[ eu , eu ]-refl !}
-       aux = {!!}
-       -- This is rejected by Agda 2.9.0:
-       -- aux rewrite thick[ eu , eu ]-refl = Equalizer.commutes equ0
+       aux rewrite cong (e''' (τ <<- Ψ (e (τ <<- Ψ₄) u)) eu) thick[ eu , eu ]-refl
+           = Equalizer.commutes equ0
 
    commz : map-Vc i (bind e'' (e _ u)) ≡ map-Vc j (bind e'' (e _ v))
    commz = subst₂ (λ eu ev → map-Vc i (bind e'' eu) ≡ map-Vc j (bind e'' ev)) (promote eu≈e[u]) (promote ev≈e[v]) commz'
@@ -342,11 +338,10 @@ coequalizer-step {τ <<- Ss} {Z} {X} f g {Sg} equ (_/_ {Ψ₄} i u) (_/_ {Ψ₃}
    commutes-mr S y = (↓-inj (bind e ((eval f S y))) (bind e ((eval g S y))) ([]eq commutes S y))
 
    commz' : map-Vc i (bind e'' (ieu / eu)) ≡ map-Vc j (bind e'' (jev / ev))
-   commz' = {!!}
-   -- commz' rewrite thick[ eu , ev ]-refl
-   --  with thick[ eu , ev ] ev | thick[ eu , ev ]-refl₂₂ neq
-   -- ... | ._                  | (_ , refl)
-   --   = cong₂ _/_ (trans assoc-∘i (trans (Pullback.commutes pull0) (sym assoc-∘i))) refl
+   commz' rewrite cong (e''' (τ <<- Ψ₂) eu) thick[ eu , ev ]-refl
+    with thick[ eu , ev ]-refl₂₂ neq
+   ... | (x , eq) rewrite (cong (e''' (τ <<- Ψ₁) ev) eq)
+       = cong₂ _/_ (trans assoc-∘i (trans (Pullback.commutes pull0) (sym assoc-∘i))) refl
 
    commz : map-Vc i (bind e'' (e _ u)) ≡ map-Vc j (bind e'' (e _ v))
    commz rewrite sym (promote eu≈e[u]) | sym (promote ev≈e[v]) = commz'
