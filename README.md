@@ -5,14 +5,13 @@ Higher-order unification problems can have multiple incompatible solutions, a ch
 
 This repo provides a formalization in Agda of higher-order pattern unification as defined by Miller in ["A Logic Programming Language with Lambda-Abstraction, Function Variables, and Simple Unification"](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.54.8958).
 
-The code has been tested with [Agda-2.3.2](http://hackage.haskell.org/package/Agda-2.3.2) using [The Agda standard library](http://wiki.portal.chalmers.se/agda/pmwiki.php?n=Libraries.StandardLibrary), if reloading you get an error related to "refl\`" you need to invalidate the interface file for `Support.Equality' because of [this bug](http://code.google.com/p/agda/issues/detail?id=756) with pattern synonyms.
+The code has been tested with Agda-2.8.0 and version 2.3 of the Agda standard library.
 
 The presentation is greatly influenced both by ["Higher-Order Dynamic Pattern Unification for Dependent Types and Records"](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.190.4789) and ["First-Order Unification by Structural Recursion"](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.25.1516) but neither are required to follow the work.
 
-["A tutorial implementation of dynamic pattern unification"](https://personal.cis.strath.ac.uk/adam.gundry/pattern-unify/) using Haskell and tackling a much more general version of the problem is a great introduction to the field.
+["A tutorial implementation of dynamic pattern unification"](https://personal.cis.strath.ac.uk/adam.gundry/pattern-unify/) using Haskell and tackling a much more general version of the problem is a great introduction to the subject.
 
-
-The key to read the present work is to identify argument lists satisfying the pattern condition with injective renamings, this point of view and the richly typed structures make it very natural to apply concepts from category theory to design the algorithm and its proof of correctness.
+The key to read the present work is to identify argument lists satisfying the pattern condition with injective renamings, structures in the category of injective renamings then fall out of the requirement that unification should produce the most general unifier.
 
 ### Overview of the modules
 <pre>
