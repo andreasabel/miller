@@ -2,7 +2,7 @@ module Unification where
 
 open import Support.Nat
 open import Data.Empty
-open import Data.Sum renaming (inj₁ to yes; inj₂ to no; map to map⊎)
+open import Data.Sum renaming (map to map⊎)
 
 open import Support.Equality
 open ≡-Reasoning
@@ -52,7 +52,7 @@ flexRigid : ∀ {Sg G D S} (u : G ∋ S) (i : Inj (ctx S) D) (s : Tm Sg (G - u) 
 flexRigid {Sg} {G} {S = S} u i s with prune i s 
 ... | ((Pr ρ , decr , m) , ρ-sup) 
  with invertTm i s ρ m 
-... | no  NotInv                  = no  λ {(_ , σ , σ-unifies) → 
+... | Inv.no  NotInv                  = Inv.no  λ {(_ , σ , σ-unifies) →
      let 
          eq = begin 
                  ren i (σ S u)              ≡⟨ T-≡ σ-unifies ⟩ 
@@ -65,7 +65,7 @@ flexRigid {Sg} {G} {S = S} u i s with prune i s
                                                subT (proj₁ σ≤ρ ∘s ρ) s     ≡⟨ sym (Sub∘.subT-∘ s) ⟩ 
                                                subT (proj₁ σ≤ρ) (subT ρ s) ∎))}
 
-... | yes (t , ren[i,t]≡sub[ρ,s]) = yes 
+... | Inv.yes (t , ren[i,t]≡sub[ρ,s]) = Inv.yes
  (_ , (DS σ , inj₂ (rigid-decr u decr)) , 
    ≡-T (begin
      ren i (σ _ u)            ≡⟨ cong (ren i) σ[u]≡t ⟩ 
@@ -115,8 +115,8 @@ flexRigid {Sg} {G} {S = S} u i s with prune i s
 flexAny : ∀ {Sg G D S} → (u : G ∋ S) → (i : Inj (ctx S) D) → (t : Tm Sg G D (! (type S))) → Spec (mvar u i) t
 flexAny u i t                       with check u t 
 flexAny u i .(sub (thin-s u) s)        | inj₁ (s , refl)             = flexRigid u i s
-flexAny u i .(mvar u j)                | inj₂ (G1 , j , []    , refl) = yes (flexSame u i j)
-flexAny u i .(wrap (d ∷ c) (mvar u j)) | inj₂ (G1 , j , d ∷ c , refl) = no  λ {(D1 , s , eq) → 
+flexAny u i .(mvar u j)                | inj₂ (G1 , j , []    , refl) = Inv.yes (flexSame u i j)
+flexAny u i .(wrap (d ∷ c) (mvar u j)) | inj₂ (G1 , j , d ∷ c , refl) = Inv.no  λ {(D1 , s , eq) →
       No-Cycle (subD s d) (subC s c) (s _ u) i j
         (trans (T-≡ eq) (wrap-sub s (d ∷ c) (mvar u j)))} 
 
@@ -124,28 +124,28 @@ mutual
   unify : ∀ {Sg G D T} → (x y : Tm Sg G D T) → ∀ n -> n ≡ Ctx-length G -> Spec x y
   -- congruence and directly failing cases
   unify (con c xs) (con c₁ ys) n l with c ≅∋? c₁ 
-  unify (con c xs) (con c₁ ys) n l | no  c≢c₁  = no (λ {(_ , _ , eq) → c≢c₁ (con-inj₁ eq)})
+  unify (con c xs) (con c₁ ys) n l | no  c≢c₁  = Inv.no (λ {(_ , _ , eq) → c≢c₁ (con-inj₁ eq)})
   unify (con c xs) (con .c ys) n l | yes refl` = cong-spec (con c) (unifyTms xs ys n l)
   unify (var x xs) (var y  ys) n l with x ≅∋? y 
-  unify (var x xs) (var y  ys) n l | no  x≢y   = no (λ {(_ , _ , eq) → x≢y (var-inj₁ eq)})
+  unify (var x xs) (var y  ys) n l | no  x≢y   = Inv.no (λ {(_ , _ , eq) → x≢y (var-inj₁ eq)})
   unify (var x xs) (var .x ys) n l | yes refl` = cong-spec (var x) (unifyTms xs ys n l)
   unify (lam x)    (lam y)     n l = cong-spec lam {x} {y} (unify x y n l)
-  unify (con _ _)  (var _ _)   n l = no λ {(_ , _ , ())}
-  unify (var _ _)  (con _ _)   n l = no λ {(_ , _ , ())}
+  unify (con _ _)  (var _ _)   n l = Inv.no λ {(_ , _ , ())}
+  unify (var _ _)  (con _ _)   n l = Inv.no λ {(_ , _ , ())}
 
   -- flexible cases
   unify (mvar u i) t          _ l = flexAny u i t
   unify t          (mvar u i) _ l = spec-comm (mvar u i) t (flexAny u i t)
  
   unifyTms : ∀ {Sg G D Ts} → (x y : Tms Sg G D Ts) → ∀ n -> n ≡ Ctx-length G -> Spec x y
-  unifyTms []       []       _ _ = yes (∃σMax[Unifies[x,x]] [])
+  unifyTms []       []       _ _ = Inv.yes (∃σMax[Unifies[x,x]] [])
   unifyTms (s ∷ xs) (t ∷ ys) n l 
    with unify s t n l
-  ... | no  ¬unify[s,t]        = no λ {(_ , ρ , eq ∷ _) → ¬unify[s,t] (_ , ρ , eq)}
-  ... | yes (_ , σ , eq , sup) 
+  ... | Inv.no  ¬unify[s,t]        = Inv.no λ {(_ , ρ , eq ∷ _) → ¬unify[s,t] (_ , ρ , eq)}
+  ... | Inv.yes (_ , σ , eq , sup)
      with under σ unifyTms xs ys n l
-  ...   | no  ¬unify[σxs,σys]       = no  λ {(_ , σ1 , eqt ∷ eqts) → ¬unify[σxs,σys] (shift eqts under ⟦ σ ⟧ by sup σ1 eqt) }
-  ...   | yes (_ , σ1 , eq1 , sup1) = yes (_ , (σ1 ∘ds σ) , optimist s t xs ys ⟦ σ ⟧ ⟦ σ1 ⟧ (eq , sup) (eq1 , sup1))
+  ...   | Inv.no  ¬unify[σxs,σys]       = Inv.no  λ {(_ , σ1 , eqt ∷ eqts) → ¬unify[σxs,σys] (shift eqts under ⟦ σ ⟧ by sup σ1 eqt) }
+  ...   | Inv.yes (_ , σ1 , eq1 , sup1) = Inv.yes (_ , (σ1 ∘ds σ) , optimist s t xs ys ⟦ σ ⟧ ⟦ σ1 ⟧ (eq , sup) (eq1 , sup1))
 
   -- termination overhead
   under_unifyTms : ∀ {Sg G D Ts} -> 

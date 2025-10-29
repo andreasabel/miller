@@ -10,13 +10,13 @@ open import Data.Sum
 open import Support.Equality
 open ≡-Reasoning
 
-open import Relation.Nullary public
-open import Data.List public hiding ([_])
+open import Relation.Nullary public using (Dec; yes; no; False; ¬_)
+open import Data.List public using (List; []; _∷_; length; _++_)
 
 infix 4 _∋_
 
 -- Proofs of membership in lists
--- a.k.a. typed de Bruijn indices 
+-- a.k.a. typed de Bruijn indices
 -- i.e. our variable names.
 data _∋_ {A : Set} : List A → A → Set where
   zero : ∀ {G T} → T ∷ G ∋ T
@@ -37,14 +37,14 @@ _≅∋_ {A} {G} {S} {T} u v = S ≡ T × u ≅ v
 --   G ∋ T
 -- ≡ [T1 , .. , S , .. , Tn] ∋ T
 -- ≅ T1 ≡ T ⊎ .. ⊎ S ≡ T ⊎ .. ⊎ Tn ≡ T
--- ≅ (T1 ≡ T ⊎ .. ⊎ Tn ≡ T) ⊎ S ≡ T  
+-- ≅ (T1 ≡ T ⊎ .. ⊎ Tn ≡ T) ⊎ S ≡ T
 -- ≅ (G - u) ∋ T ⊎ S ≡ T
 --
 -- thin and thick below are the witnesses
 
 _-_ : ∀ {A T} → (G : List A) → G ∋ T → List A
 (T ∷ G) - zero  = G
-(S ∷ G) - suc x = S ∷ (G - x) 
+(S ∷ G) - suc x = S ∷ (G - x)
 
 infix 35 _-_
 
@@ -61,7 +61,7 @@ suc-inj1 : ∀ {A : Set}{xs : List A}{x z} {i : xs ∋ x}{j : xs ∋ x} → _∋
 suc-inj1 refl = refl
 
 x∉thinx : ∀ {A} {G : List A}{S} → (x : G ∋ S) → (y : (G - x) ∋ S) -> x ≡ thin x S y -> ⊥
-x∉thinx zero    y    () 
+x∉thinx zero    y    ()
 x∉thinx (suc x) zero ()
 x∉thinx (suc x) (suc y) eq = x∉thinx x y (suc-inj1 eq)
 
@@ -83,8 +83,8 @@ thick-thin (suc x) zero = refl
 thick-thin (suc x) (suc y) rewrite thick-thin x y = refl
 
 thin-inj : ∀ {A : Set}{xs : List A}{x y : A} -> (v : xs ∋ x) -> {i j : (xs - v) ∋ y} -> thin v y i ≡ thin v y j -> i ≡ j
-thin-inj v {i} {j} eq with cong (\ x -> maybe′ (\ x -> Maybe.just (proj₁ x)) nothing (isInj₁ (thick v x))) eq 
-... | p rewrite thick-thin v i | thick-thin v j with p 
+thin-inj v {i} {j} eq with cong (\ x -> maybe′ (\ x -> Maybe.just (proj₁ x)) nothing (isInj₁ (thick v x))) eq
+... | p rewrite thick-thin v i | thick-thin v j with p
 thin-inj v {i} {.i} eq | p | refl = refl
 
 _≅∋?_ : ∀ {A : Set} {G : List A} {S} (u : G ∋ S) {T} (v : G ∋ T) -> Dec (u ≅∋ v)
@@ -93,13 +93,13 @@ u ≅∋? v         with thick u v
 _≅∋?_ {S = S} u ._ | inj₁ (w , refl) = no (aux w) where
   aux : ∀ {T} (w : _ ∋ T) -> Σ (S ≡ T) (λ x → u ≅ thin u T w) → ⊥
   aux w (refl , eq) = x∉thinx u w (≅-to-≡ eq)
- 
+
 
 any? : ∀ {A : Set}{G : List A}{P : ∀ {S} -> G ∋ S -> Set} -> (∀ {S} v -> Dec (P {S} v)) -> Dec (∃ \ S -> ∃ (P {S}))
 any? {_} {[]}    dec = no (\ {(_ , () , _)})
-any? {_} {S ∷ G} dec 
+any? {_} {S ∷ G} dec
  with dec zero | any? (\ v -> dec (suc v))
 ... | yes p    | _               = yes (_ , zero , p)
 ... | no ¬p    | yes (T , v , p) = yes (T , suc v , p)
-... | no ¬p    | no ¬q           = no  λ {(._ , zero , p) → ¬p p; 
+... | no ¬p    | no ¬q           = no  λ {(._ , zero , p) → ¬p p;
                                           (_ , suc v , p) → ¬q (_ , v , p)}

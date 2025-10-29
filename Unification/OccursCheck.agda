@@ -7,12 +7,12 @@ open import Data.Sum renaming (inj₁ to no; inj₂ to yes)
 
 open import Support.Equality
 
-open import Injections hiding (Dec)
+open import Injections hiding (Dec; yes; no)
 
 open import Syntax
 
 _OccursIn_ : ∀ {Sg G D T S} (u : G ∋ S) (t : Term Sg G D T) → Set
-_OccursIn_ {Sg} {G} {D} {T} {S} u t 
+_OccursIn_ {Sg} {G} {D} {T} {S} u t
    = ∃ \ D' → ∃ \ (j : Inj (ctx S) D') → ∃ \ (C : Context Sg G (D , T) (D' , inj₁ ([] ->> type S))) → wrap C (mvar u j) ≡ t
   where open import Data.Sum
 
@@ -25,28 +25,27 @@ Dec u OccursIn t = u NotOccursIn t ⊎ u OccursIn t
 map-occ : ∀ {Sg G S D T D' T'}{u : G ∋ S}{t : Term Sg G D T} (d : DTm Sg G (D' , T') (D , T)) → u OccursIn t → u OccursIn wrapD d t
 map-occ d (Dj , j , C , eq) = (Dj , j , (d ∷ C) , cong (wrapD d) eq)
 
-_∙_ : ∀ {Sg G S D T D' T'}{u : G ∋ S}{t : Term Sg G D T} (d : DTm Sg (G - u) (D' , T') (D , T)) 
+_∙_ : ∀ {Sg G S D T D' T'}{u : G ∋ S}{t : Term Sg G D T} (d : DTm Sg (G - u) (D' , T') (D , T))
         → Dec u OccursIn t → Dec u OccursIn wrapD (subD (thin-s u) d) t
 _∙_ {u = u} d (yes occ)     = yes (map-occ (subD (thin-s u) d) occ)
 _∙_ {u = u} d (no (s , eq)) = no  (wrapD d s , trans (wrapD-sub _ d s) (cong (wrapD (subD (thin-s u) d)) eq))
 
 -- "check" decides whether u occurs in t.
 -- Note: without the pattern condition we'd have to consider
---       the occurrences' "rigid"-ness. 
+--       the occurrences' "rigid"-ness.
 mutual
   check : ∀ {Sg G D T S} (u : G ∋ S) (t : Tm Sg G D T) → Dec u OccursIn t
-  check u (con c ts) = con c ∙ checks u ts 
+  check u (con c ts) = con c ∙ checks u ts
   check u (var x ts) = var x ∙ checks u ts
   check u (lam t)    = lam   ∙ check u t
   check u (mvar w j) with thick u w
   ...                 | no  (z , eq) = no  (mvar z j , cong₂ mvar eq (right-id j))
   check u (mvar .u j) | yes refl`    = yes (_ , j , [] , refl)
-  
+
   checks : ∀ {Sg G D Ts S} (u : G ∋ S) (ts : Tms Sg G D Ts) → Dec u OccursIn ts
   checks u []       = no ([] , refl)
-  checks u (t ∷ ts) 
-   with check u t | checks u ts 
+  checks u (t ∷ ts)
+   with check u t | checks u ts
   ... | yes x     | _           = yes (map-occ (head ts) x)
   ... | _         | yes xs      = yes (map-occ (tail t) xs)
   ... | no  x     | no  xs      = no  (mapΣ₂ _∷_ (cong₂ _∷_) x xs)
-

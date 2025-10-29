@@ -6,7 +6,7 @@ open import Data.Sum renaming (inj₁ to yes; inj₂ to no)
 open import Support.Equality
 open ≡-Reasoning
 
-open import Injections
+open import Injections hiding (yes; no)
 
 open import Syntax
 
@@ -18,7 +18,7 @@ Property< b > Sg G = (∀ {G2} -> Sub< b > Sg G G2 -> Set)
 
 Property : ∀ Sg G -> Set₁
 Property Sg G = ∀ {b} -> Property< b > Sg G
- 
+
 Unifies : ∀ {Sg G1 D S} (x y : Term Sg G1 D S) -> Property Sg G1
 Unifies x y σ = subT σ x ≡T subT σ y
 
@@ -46,26 +46,26 @@ Spec x y = ∃⟦σ⟧ Max (Unifies x y) ⊎ ¬ ∃σ Unifies x y
 Unifies-ext : ∀ {Sg G1 D S} (x y : Term Sg G1 D S) -> ∀ {b} -> Extensional {b} (Unifies x y)
 Unifies-ext x y f≡g subfx≡subfy rewrite subT-ext f≡g x | subT-ext f≡g y = subfx≡subfy
 
-≤-∘ : ∀ {Sg g g1 g2 g3}(ρ : Sub< false > Sg g g1)(p : Sub Sg g g2)(q : Sub Sg g2 g3) -> (ρ≤p : ρ ≤ p) -> proj₁ ρ≤p ≤ q -> ρ ≤ (q ∘s p) 
-≤-∘ ρ p q (δ , ρ≡δ∘p) (δ' , δ'≡δ∘q) 
+≤-∘ : ∀ {Sg g g1 g2 g3}(ρ : Sub< false > Sg g g1)(p : Sub Sg g g2)(q : Sub Sg g2 g3) -> (ρ≤p : ρ ≤ p) -> proj₁ ρ≤p ≤ q -> ρ ≤ (q ∘s p)
+≤-∘ ρ p q (δ , ρ≡δ∘p) (δ' , δ'≡δ∘q)
   = δ' , λ S u → begin ρ S u                    ≡⟨ ρ≡δ∘p S u ⟩
-                       sub δ (p S u)            ≡⟨ sub-ext δ'≡δ∘q (p S u) ⟩ 
+                       sub δ (p S u)            ≡⟨ sub-ext δ'≡δ∘q (p S u) ⟩
                        subT (δ' ∘s q) (p S u)   ≡⟨ sym (Sub∘.subT-∘ (p S u)) ⟩
                        subT δ' (subT q (p S u)) ∎
 
 
 map-Unifies : ∀ {Sg g h h' d t} {σ : Sub Sg g h}{σ' : Sub Sg g h'}-> σ ≤ σ' -> {x y : Term Sg g d t} -> Unifies x y σ' -> Unifies x y σ
-map-Unifies {σ = σ} {σ'} (δ , σ≡δ∘σ') {x} {y} σ'Unifies[x,y] = ≡-T 
+map-Unifies {σ = σ} {σ'} (δ , σ≡δ∘σ') {x} {y} σ'Unifies[x,y] = ≡-T
          (begin subT σ x           ≡⟨ subT-ext σ≡δ∘σ' x ⟩
                 subT (δ ∘s σ') x   ≡⟨ T-≡ (sandwich subT-∘ (T.cong (subT δ) σ'Unifies[x,y])) ⟩
                 subT (δ ∘s σ') y   ≡⟨ sym (subT-ext σ≡δ∘σ' y) ⟩
                 subT σ y           ∎)
 
 
-shift_under_by_ : ∀ {Sg G h1 h2 D T} {xs ys : Term Sg G D T} {σ1 : Sub< false > Sg G h1} 
+shift_under_by_ : ∀ {Sg G h1 h2 D T} {xs ys : Term Sg G D T} {σ1 : Sub< false > Sg G h1}
                   -> Unifies xs ys σ1 -> (σ : Sub Sg G h2) -> σ1 ≤ σ -> ∃σ Unifies (subT σ xs) (subT σ ys)
-shift_under_by_ eq σ (δ , σ1≡δ∘σ) = _ , δ , sandwich (λ xs₁ → sym (trans (Sub∘.subT-∘ xs₁) 
-                                                        (sym (subT-ext σ1≡δ∘σ xs₁)))) 
+shift_under_by_ eq σ (δ , σ1≡δ∘σ) = _ , δ , sandwich (λ xs₁ → sym (trans (Sub∘.subT-∘ xs₁)
+                                                        (sym (subT-ext σ1≡δ∘σ xs₁))))
                                                      eq
 
 
@@ -82,12 +82,12 @@ cong-spec d (inj₂ no-unifier) = inj₂ (λ {(_ , σ , σ-unifies) → no-unifi
 
 optimist : ∀ {Sg m l o D T Ts}(x y : Tm Sg m D T)(xs ys : Tms Sg m D Ts) ->
            (p : Sub Sg m o) (q : Sub Sg o l) ->
-           Max (Unifies x y) p 
-           -> Max (Unifies (subT p xs) (subT p ys)) q 
+           Max (Unifies x y) p
+           -> Max (Unifies (subT p xs) (subT p ys)) q
            -> Max (Unifies (Tms._∷_ x xs) (y ∷ ys)) (q ∘s p)
 
-optimist x y xs ys p q ([p]Unifies[x,y] , sup-p) ([q]Unifies[px,py] , sup-q) = 
-             (map-Unifies (q , λ S u → refl) {x} {y} [p]Unifies[x,y] ∷ sandwich subT-∘ [q]Unifies[px,py]) , 
+optimist x y xs ys p q ([p]Unifies[x,y] , sup-p) ([q]Unifies[px,py] , sup-q) =
+             (map-Unifies (q , λ S u → refl) {x} {y} [p]Unifies[x,y] ∷ sandwich subT-∘ [q]Unifies[px,py]) ,
              (λ {ρ ([ρ]Unifies[x,y] ∷ [ρ]Unifies[xs,ys])
                      → let ρ≤p : _
                            ρ≤p = sup-p ρ [ρ]Unifies[x,y]
@@ -98,10 +98,10 @@ optimist x y xs ys p q ([p]Unifies[x,y] , sup-p) ([q]Unifies[px,py] , sup-q) =
                            δ≤q : _
                            δ≤q
                              = sup-q δ
-                               (sandwich (λ x₁ → sym (Sub∘.subT-∘ x₁)) 
+                               (sandwich (λ x₁ → sym (Sub∘.subT-∘ x₁))
                                (Unifies-ext xs ys ρ≡δ∘p [ρ]Unifies[xs,ys]))
                        in ≤-∘ ρ p q ρ≤p δ≤q})
-             
+
 
 
 ∃σMax[Unifies[x,x]] : ∀ {Sg G D T} (x : Term Sg G D T) -> ∃⟦σ⟧ Max (Unifies x x)
@@ -110,9 +110,9 @@ optimist x y xs ys p q ([p]Unifies[x,y] , sup-p) ([q]Unifies[px,py] , sup-q) =
                  refl-T _ ,
                  (λ ρ x₁ → ρ , (λ S u → sym (ren-id _)))
 
-Spec[xs,ys]⇒Spec[σxs,σys] : ∀ {Sg G G1 D T} {xs ys : Term Sg G D T} (σ : Sub Sg G G1) -> Ctx-length G ≡ Ctx-length G1 -> 
+Spec[xs,ys]⇒Spec[σxs,σys] : ∀ {Sg G G1 D T} {xs ys : Term Sg G D T} (σ : Sub Sg G G1) -> Ctx-length G ≡ Ctx-length G1 ->
                             IsIso σ -> Spec xs ys -> Spec (subT σ xs) (subT σ ys)
-Spec[xs,ys]⇒Spec[σxs,σys] {xs = xs} {ys = ys} σ G~G1 ((δ , id≡δ∘σ) , id≡σ∘δ) (yes (_ , σ₁ , [σ₁]Unifies[xs,ys] , sup-σ₁)) 
+Spec[xs,ys]⇒Spec[σxs,σys] {xs = xs} {ys = ys} σ G~G1 ((δ , id≡δ∘σ) , id≡σ∘δ) (yes (_ , σ₁ , [σ₁]Unifies[xs,ys] , sup-σ₁))
    = yes (_ , σ₁ ∘ds (DS δ , inj₁ (sym G~G1 , (σ , id≡σ∘δ) , id≡δ∘σ)) , [σ₁∘δ]Unifies[σxs,σys] , sup-[σ₁∘δ])
   where
     [σ₁∘δ]Unifies[σxs,σys] = sandwich (λ ys →
@@ -135,5 +135,5 @@ Spec[xs,ys]⇒Spec[σxs,σys] {xs = xs} {ys = ys} σ G~G1 ((δ , id≡δ∘σ) ,
        where
          ρ∘σ≤σ₁ = sup-σ₁ (ρ ∘s σ) (sandwich Sub∘.subT-∘ [ρ]Unifies[σxs,σys])
          δ' = proj₁ ρ∘σ≤σ₁
-      
+
 Spec[xs,ys]⇒Spec[σxs,σys] σ G~G1 _ (no ¬p) = no (λ {(_ , σ₁ , eq) → ¬p (_ , σ₁ ∘s σ , sandwich Sub∘.subT-∘ eq)})
